@@ -5,17 +5,27 @@ if [ "$(id -u)" -ne 0 ]; then
     echo "This script must be run with sudo."
     exit 1
 fi
-
 apt update -y && apt upgrade -y
 
 #OISF ppa
 
 suricata_install() {
     sudo add-apt-repository ppa:oisf/suricata-stable -y
+    sudo apt update
     sudo apt install -y suricata jq
 }
 
+install_dependencies() {
+    # Check if requirements.txt exists
+    if [ -f "requirements.txt" ]; then
+        while IFS= read -r package; do
+            apt install -y "$package"
+        done < "requirements.txt"
+    fi
+}
+#install suricata and dependacies
 if ! command -v suricata &>/dev/null; then
+    install_dependencies
     suricata_install
 fi
 
@@ -37,11 +47,21 @@ sudo sed -i "s/^[[:space:]]*- interface:.*/- interface: $internet_interface/g" /
 }
 change_config
 
-##add source list
-sources="./sources.txt"
-while read line; do
-	sudo suricata-update enable-source "$line"
-done < "$sources"
+
+# Check if sources.txt exists
+if [ -f "sources.txt" ]; then
+    sources="./sources.txt"
+    # Loop through each line in sources.txt and enable sources
+    while IFS= read -r line; do
+        if sudo suricata-update enable-source "$line"; then
+            echo "Enabled Suricata source: $line"
+        else
+            echo "Failed to enable Suricata source: $line"
+        fi
+    done < "$sources"
+else
+    echo "Error: sources.txt not found."
+fi
 
 sudo suricata-update
 sudo systemctl restart suricata
