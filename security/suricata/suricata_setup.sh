@@ -62,6 +62,14 @@ if [ -f "sources.txt" ]; then
 else
     echo "Error: sources.txt not found."
 fi
+# Define the cron schedule
+cron_schedule="0 0 * * 0 sudo suricata-update"
+
+# Check if the cron job already exists in the crontab
+if ! sudo crontab -l | grep -q "$cron_schedule"; then
+    # Add the cron job if it doesn't exist
+    echo "$cron_schedule" | sudo crontab -
+fi
 
 sudo suricata-update
 sudo systemctl restart suricata
